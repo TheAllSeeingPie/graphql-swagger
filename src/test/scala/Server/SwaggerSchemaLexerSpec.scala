@@ -8,7 +8,6 @@ import scala.io.Source
 class SwaggerSchemaLexerSpec extends org.scalatest.FlatSpec with Matchers {
   val helloWorld = Source.fromInputStream(getClass().getClassLoader().getResourceAsStream("HelloWorld.swagger")).mkString
   val Right(result) = SwaggerSchemaLexer(helloWorld)
-  println(result)
 
   behavior of "SwaggerSchemaLexer"
 

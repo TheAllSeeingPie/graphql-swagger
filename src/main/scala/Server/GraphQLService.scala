@@ -51,7 +51,6 @@ class GraphQLService(schema: Schema[Unit, JValue]) extends Service[Request, Resp
         val operation = (input \\ "operationName").extractOpt[String]
         QueryParser.parse(query) match {
           case Success(query) => {
-            println(query)
             Executor.execute(schema, query, root = JObject(List()), variables = vars.getOrElse(JObject(List())), operationName = operation)
               .as[Future[JValue]]
               .map(c => createResponse(renderCompact(c)))

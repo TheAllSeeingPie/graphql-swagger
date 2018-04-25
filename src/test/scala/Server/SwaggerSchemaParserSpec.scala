@@ -11,7 +11,6 @@ class SwaggerSchemaParserSpec extends org.scalatest.FlatSpec with Matchers {
 
   val Right(result) = SwaggerSchemaLexer(helloWorld)
   val parsed = SwaggerSchemaParser(result)
-  println(parsed)
   val Right(parsedResult) = parsed
 
   behavior of "SwaggerSchemaParser"
