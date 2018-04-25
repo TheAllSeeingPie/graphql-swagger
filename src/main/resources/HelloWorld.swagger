@@ -1,0 +1,33 @@
+swagger: '2.0'
+info:
+  version: 0.0.0
+  title: title
+  description: description
+  termsOfService: terms
+  contact:
+    name: TheAllSeeingPie
+  license:
+    name: MIT
+    url: http://opensource.org/licenses/MIT
+schemes:
+  - http
+paths:
+  /:
+    get:
+      produces:
+        - "application/json"
+      responses:
+        200:
+          description: "Just a simple response"
+          schema:
+            $ref: "#/definitions/HelloWorld"
+definitions:
+  HelloWorld:
+    type: "object"
+    properties:
+      hello:
+        type: "string"
+        enum:
+          - "world!"
+      version:
+        type: "integer"

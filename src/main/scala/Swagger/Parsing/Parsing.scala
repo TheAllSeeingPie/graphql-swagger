@@ -52,10 +52,17 @@ object SwaggerSchemaParser extends Parsers {
     INDENT ~ objectTypeDef ~ PROPERTIES ~ INDENT ~ rep1(property) ~
     DEDENT ~ DEDENT ^^ { case name ~ _ ~ objectType ~ _ ~ _ ~ properties ~ _ ~ _ => TypeDef(name, objectType, properties) }
 
-  def property = literal ~
-    INDENT ~ propertyTypeDef ~ ENUM ~
-    INDENT ~ choice ~
-    DEDENT ~ DEDENT ^^ { case name ~ _ ~ propertyType ~ _ ~ _ ~ choice ~ _ ~ _ => Property(name, propertyType) }
+  def property = {
+    val short = literal ~
+    INDENT ~ propertyTypeDef ~ DEDENT ^^ { case name ~ _ ~ propertyType ~ _ => Property(name, propertyType) }
+
+    val enumed = literal ~
+      INDENT ~ propertyTypeDef ~ ENUM ~
+      INDENT ~ choice ~
+      DEDENT ~ DEDENT ^^ { case name ~ _ ~ propertyType ~ _ ~ _ ~ _ ~ _ ~ _ => Property(name, propertyType) }
+
+    enumed | short
+  }
 
   def literal = accept("literal", { case LITERAL(n, _) => n })
 
@@ -80,6 +87,7 @@ object SwaggerSchemaParser extends Parsers {
   def propertyTypeDef = accept("propertyTypeDef", {
     case TYPE(tn) => tn match {
       case "string" => StringType
+      case "integer" => IntegerType
     }
   })
 
@@ -118,6 +126,8 @@ case object ObjectType extends SwaggerSchemaObjectType
 trait SwaggerSchemaPropertyType
 
 case object StringType extends SwaggerSchemaPropertyType
+
+case object IntegerType extends SwaggerSchemaPropertyType
 
 trait SwaggerSchemaStatusCode
 
