@@ -29,22 +29,24 @@ object SwaggerSchemaParser extends Parsers {
       INDENT ~ choice ~
       DEDENT ^^ { _ => Ignored }
     val paths = PATHS ~
-      INDENT ~ path ~
-      INDENT ~ verb ~
-      INDENT ~ PRODUCES ~
-      INDENT ~ choice ~
-      DEDENT ~ RESPONSES ~
-      INDENT ~ literal ~
-      INDENT ~ description ~ SCHEMA ~
-      INDENT ~ reference ~
-      DEDENT ~ DEDENT ~ DEDENT ~ DEDENT ~ DEDENT ~ DEDENT ^^ { _ => Ignored }
+      INDENT ~ rep1(pathDef) ~ DEDENT ^^ { case _ ~ paths ~ _ => Paths(paths) }
     val definitions = DEFINITIONS ~
-      INDENT ~ rep1(definition) ~ DEDENT ^^ { case _ ~ _ ~ defs ~ _ => Definitions(defs) }
+      INDENT ~ rep1(definition) ~ DEDENT ^^ { case _ ~ _ ~ definitions ~ _ => Definitions(definitions) }
     header | paths | definitions
   }
 
   //Only support GET for now
-  def verb = GET //| PUT | POST | PATCH | DELETE | OPTIONS
+  def method = Swagger.Lexing.GET ^^ { _ => "GET" } //| PUT | POST | PATCH | DELETE | OPTIONS
+
+  def pathDef = path ~
+    INDENT ~ method ~
+    INDENT ~ PRODUCES ~
+    INDENT ~ choice ~
+    DEDENT ~ RESPONSES ~
+    INDENT ~ literal ~
+    INDENT ~ description ~ SCHEMA ~
+    INDENT ~ reference ~
+    DEDENT ~ DEDENT ~ DEDENT ~ DEDENT ~ DEDENT ^^ { case path ~ _ ~ method ~ _ ~ _ ~ _ ~ _ ~ _ ~ _ ~ _ ~ _ ~ _ ~ _ ~ _ ~ _ ~ ref ~ _ ~ _ ~ _ ~ _ ~ _ => Path(path, method, ref) }
 
   def definition = literal ~
     INDENT ~ objectTypeDef ~ PROPERTIES ~ INDENT ~ rep1(property) ~
@@ -67,7 +69,7 @@ object SwaggerSchemaParser extends Parsers {
 
   def path = accept("path", { case PATH(p) => p })
 
-  def reference = accept("reference", { case REFERENCE(r) => r })
+  def reference = accept("reference", { case REFERENCE(r) => r.substring(14) })
 
   def objectTypeDef = accept("objectTypeDef", {
     case TYPE(tn) => tn match {
@@ -105,6 +107,10 @@ case class TypeName(name: String) extends SwaggerSchemaAST
 
 case class Property(name: String, `type`: SwaggerSchemaPropertyType) extends SwaggerSchemaAST
 
+case class Paths(paths: List[Path]) extends SwaggerSchemaAST
+
+case class Path(path: String, method: String, reference: String) extends SwaggerSchemaAST
+
 trait SwaggerSchemaObjectType
 
 case object ObjectType extends SwaggerSchemaObjectType
@@ -112,3 +118,7 @@ case object ObjectType extends SwaggerSchemaObjectType
 trait SwaggerSchemaPropertyType
 
 case object StringType extends SwaggerSchemaPropertyType
+
+trait SwaggerSchemaStatusCode
+
+case object OK extends SwaggerSchemaStatusCode

@@ -20,7 +20,8 @@ object Server extends App {
         r
       })
     })
-    val dynamicExample = Http.serve(":3000", new GraphQLService(SwaggerSchemaDefinition(":8000")))
+    val schema = SwaggerSchemaDefinition(":8000")
+    val dynamicExample = Http.serve(":3000", new GraphQLService(schema.schema))
     Await.all(testApi, dynamicExample)
   }
 }

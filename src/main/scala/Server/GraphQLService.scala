@@ -20,15 +20,11 @@ import sangria.schema.Schema
 import scala.io.Source
 import scala.util.{Failure, Success}
 
-trait SchemaDefinition {
-  def schema : Schema[Unit, Unit]
-}
-
 object GraphQLService {
-  def apply(schemaDefinition: SchemaDefinition): GraphQLService = new GraphQLService(schemaDefinition)
+  def apply(schema: Schema[Unit, JValue]) = new GraphQLService(schema)
 }
 
-class GraphQLService(schemaDefinition: SchemaDefinition) extends Service[Request, Response] with Json4sJacksonSupportLowPrioImplicits {
+class GraphQLService(schema: Schema[Unit, JValue]) extends Service[Request, Response] with Json4sJacksonSupportLowPrioImplicits {
   val pool = FuturePool.interruptibleUnboundedPool
 
   override def apply(request: Request) = {
@@ -55,7 +51,8 @@ class GraphQLService(schemaDefinition: SchemaDefinition) extends Service[Request
         val operation = (input \\ "operationName").extractOpt[String]
         QueryParser.parse(query) match {
           case Success(query) => {
-            Executor.execute(schemaDefinition.schema, query, variables = vars.getOrElse(JObject(List())), operationName = operation)
+            println(query)
+            Executor.execute(schema, query, root = JObject(List()), variables = vars.getOrElse(JObject(List())), operationName = operation)
               .as[Future[JValue]]
               .map(c => createResponse(renderCompact(c)))
               .rescue {
