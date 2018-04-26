@@ -24,10 +24,6 @@ class SwaggerSchemaDefinition(swaggerUri: String) {
   val schema = Schema(QueryType)
 
   private def getFields(swagger: List[SwaggerSchemaAST]) = {
-    def parseTypeToField[Ctx, Val, Res](typeDef: TypeDef) = {
-
-    }
-
     swagger match {
       case Ignored :: Paths(paths) :: Definitions(types) :: Nil =>
         paths.map(p => {
