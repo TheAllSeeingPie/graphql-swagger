@@ -16,29 +16,42 @@ object SwaggerSchemaParser extends Parsers {
     }
   }
 
-  def schema = phrase(rep1(blocks))
+  private def schema = phrase(rep1(blocks))
 
-  def blocks = {
-    val header = swagger ~ INFO ~
-      INDENT ~ version ~ literal ~ description ~ literal ~ literal ~
-      INDENT ~ literal ~
-      DEDENT ~ literal ~
-      INDENT ~ literal ~ literal ~
+  private def blocks = {
+    val header = swagger ^^ { _ => Ignored }
+    val info = INFO ~
+      INDENT ~ rep1(version | literal | description | termsOfService) ~
+      INDENT ~ rep1(literal) ~
       DEDENT ~
-      DEDENT ~ literal ~
+      literal ~
+      INDENT ~ rep1(literal) ~
+      DEDENT ~
+      DEDENT ^^ { _ => Ignored }
+    val host = parseHost ^^ { _ => Ignored }
+    val basePath = parseBasePath ^^ { _ => Ignored }
+    val availableSchemes = SCHEMES ~
       INDENT ~ choice ~
       DEDENT ^^ { _ => Ignored }
+    val parseExternalDocs = EXTERNALDOCS ~ INDENT ~ rep1(description | literal) ~ DEDENT
+    val tags = TAGS ~
+      INDENT ~ rep1(literal ~
+      INDENT ~ rep1(description | parseExternalDocs) ~ DEDENT) ~
+      DEDENT ^^ { _ => Ignored }
+    val externalDocs = parseExternalDocs ^^ { _ => Ignored }
+    val securityDefinitions = SECURITYDEFINITIONS ^^ { _ => Ignored }
     val paths = PATHS ~
       INDENT ~ rep1(pathDef) ~ DEDENT ^^ { case _ ~ paths ~ _ => Paths(paths) }
     val definitions = DEFINITIONS ~
       INDENT ~ rep1(definition) ~ DEDENT ^^ { case _ ~ _ ~ definitions ~ _ => Definitions(definitions) }
-    header | paths | definitions
+    header | info | host | basePath | availableSchemes |
+      tags | externalDocs | securityDefinitions | paths | definitions
   }
 
   //Only support GET for now
-  def method = Swagger.Lexing.GET ^^ { _ => "GET" } //| PUT | POST | PATCH | DELETE | OPTIONS
+  private def method = Swagger.Lexing.GET ^^ { _ => "GET" } //| PUT | POST | PATCH | DELETE | OPTIONS
 
-  def pathDef = path ~
+  private def pathDef = path ~
     INDENT ~ method ~
     INDENT ~ PRODUCES ~
     INDENT ~ choice ~
@@ -48,13 +61,13 @@ object SwaggerSchemaParser extends Parsers {
     INDENT ~ reference ~
     DEDENT ~ DEDENT ~ DEDENT ~ DEDENT ~ DEDENT ^^ { case path ~ _ ~ method ~ _ ~ _ ~ _ ~ _ ~ _ ~ _ ~ _ ~ _ ~ _ ~ _ ~ _ ~ _ ~ ref ~ _ ~ _ ~ _ ~ _ ~ _ => Path(path, method, ref) }
 
-  def definition = literal ~
+  private def definition = literal ~
     INDENT ~ objectTypeDef ~ PROPERTIES ~ INDENT ~ rep1(property) ~
     DEDENT ~ DEDENT ^^ { case name ~ _ ~ objectType ~ _ ~ _ ~ properties ~ _ ~ _ => TypeDef(name, objectType, properties) }
 
-  def property = {
+  private def property = {
     val short = literal ~
-    INDENT ~ propertyTypeDef ~ DEDENT ^^ { case name ~ _ ~ propertyType ~ _ => Property(name, propertyType) }
+      INDENT ~ propertyTypeDef ~ DEDENT ^^ { case name ~ _ ~ propertyType ~ _ => Property(name, propertyType) }
 
     val enumed = literal ~
       INDENT ~ propertyTypeDef ~ ENUM ~
@@ -64,27 +77,33 @@ object SwaggerSchemaParser extends Parsers {
     enumed | short
   }
 
-  def literal = accept("literal", { case LITERAL(n, _) => n })
+  private def literal = accept("literal", { case LITERAL(n, _) => n })
 
-  def swagger = accept("swagger", { case SWAGGER(v) => v })
+  private def swagger = accept("swagger", { case SWAGGER(v) => v })
 
-  def version = accept("version", { case VERSION(v) => v })
+  private def parseHost = accept("parseHost", { case HOST(h) => h })
 
-  def description = accept("description", { case DESCRIPTION(d) => d })
+  private def parseBasePath = accept("parseBasePath", { case BASEPATH(h) => h })
 
-  def choice = accept("choice", { case CHOICE(v) => v })
+  private def version = accept("version", { case VERSION(v) => v })
 
-  def path = accept("path", { case PATH(p) => p })
+  private def description = accept("description", { case DESCRIPTION(d) => d })
 
-  def reference = accept("reference", { case REFERENCE(r) => r.substring(14) })
+  private def termsOfService = accept("termsOfService", { case TERMSOFSERVICE(t) => t })
 
-  def objectTypeDef = accept("objectTypeDef", {
+  private def choice = accept("choice", { case CHOICE(v) => v })
+
+  private def path = accept("path", { case PATH(p) => p })
+
+  private def reference = accept("reference", { case REFERENCE(r) => r.substring(14) })
+
+  private def objectTypeDef = accept("objectTypeDef", {
     case TYPE(tn) => tn match {
       case "object" => ObjectType
     }
   })
 
-  def propertyTypeDef = accept("propertyTypeDef", {
+  private def propertyTypeDef = accept("propertyTypeDef", {
     case TYPE(tn) => tn match {
       case "string" => StringType
       case "integer" => IntegerType

@@ -9,7 +9,15 @@ case class INDENTATION(spaces: Int) extends SwaggerSchema
 
 case class LITERAL(name: String, value: Option[String] = None) extends SwaggerSchema
 
-case class SWAGGER(version:String) extends SwaggerSchema
+case class SWAGGER(version: String) extends SwaggerSchema
+
+case object SCHEMES extends SwaggerSchema
+
+case object SECURITYDEFINITIONS extends SwaggerSchema
+
+case object TAGS extends SwaggerSchema
+
+case object EXTERNALDOCS extends SwaggerSchema
 
 case object INFO extends SwaggerSchema
 
@@ -57,9 +65,16 @@ case object INDENT extends SwaggerSchema
 
 case object DEDENT extends SwaggerSchema
 
+case class HOST(host: String) extends SwaggerSchema
+
+case class TERMSOFSERVICE(host: String) extends SwaggerSchema
+
+case class BASEPATH(path: String) extends SwaggerSchema
+
 trait SwaggerSchemaError
 
 case class SwaggerSchemaLexerError(msg: String) extends SwaggerSchemaError
+
 case class SwaggerSchemaParserError(msg: String) extends SwaggerSchemaError
 
 object SwaggerSchemaLexer extends RegexParsers {
@@ -87,7 +102,8 @@ object SwaggerSchemaLexer extends RegexParsers {
   private def tokens: Parser[List[SwaggerSchema]] = {
     phrase(rep1(indentation | paths | path | get | put | post | patch | delete | options | produces | responses
       | description | schema | reference | definitions | `type` | properties | enum
-      | swagger | info | version
+      | swagger | info | version | host | basePath | schemes | tags | externalDocs | termsOfService
+      | securityDefinitions
       | literal | choice)) ^^ { t => processIndentations(t) }
   }
 
@@ -106,7 +122,21 @@ object SwaggerSchemaLexer extends RegexParsers {
     }
   }
 
-  private def choice = pullFromExpr("-[ ](.*)".r, s => CHOICE(s))
+  private def termsOfService = pullFromExpr("termsOfService: [\"']?(.*)[\"']?".r, TERMSOFSERVICE(_))
+
+  private def host = pullFromExpr("host: (.+)".r, HOST(_))
+
+  private def basePath = pullFromExpr("basePath: (.+)".r, BASEPATH(_))
+
+  private def schemes = "schemes:".r ^^ { _ => SCHEMES }
+
+  private def tags = "tags:".r ^^ { _ => TAGS }
+
+  private def externalDocs = "externalDocs:".r ^^ { _ => EXTERNALDOCS }
+
+  private def securityDefinitions = "securityDefinitions:".r ^^ { _ => SECURITYDEFINITIONS }
+
+  private def choice = pullFromExpr("-[ ](.*)".r, CHOICE(_))
 
   private def paths = "paths:".r ^^ { _ => PATHS }
 
@@ -128,15 +158,15 @@ object SwaggerSchemaLexer extends RegexParsers {
 
   private def responses = "responses:".r ^^ { _ => RESPONSES }
 
-  private def description = pullFromExpr("description: (.+)".r, str => DESCRIPTION(str))
+  private def description = pullFromExpr("description: (.+)".r, DESCRIPTION(_))
 
   private def schema = "schema:".r ^^ { _ => SCHEMA }
 
-  private def reference = pullFromExpr("\\$ref: \"(.+)\"".r, s => REFERENCE(s))
+  private def reference = pullFromExpr("\\$ref: (\"|')(.+)(\"|')".r, REFERENCE(_), 2)
 
   private def definitions = "definitions:".r ^^ { _ => DEFINITIONS }
 
-  private def `type` = pullFromExpr("type: \"(.+)\"".r, s => TYPE(s))
+  private def `type` = pullFromExpr("type: \"(.+)\"".r, TYPE(_))
 
   private def properties = "properties:".r ^^ { _ => PROPERTIES }
 
@@ -144,9 +174,9 @@ object SwaggerSchemaLexer extends RegexParsers {
 
   private def info = "info:".r ^^ { _ => INFO }
 
-  private def swagger = pullFromExpr("swagger: \'(.+)\'".r, s => SWAGGER(s))
+  private def swagger = pullFromExpr("swagger: \'(.+)\'".r, SWAGGER(_))
 
-  private def version = pullFromExpr("version: (.+)".r, s => VERSION(s))
+  private def version = pullFromExpr("version: (.+)".r, VERSION(_))
 
   private def pullFromExpr(expr: Regex, f: String => SwaggerSchema, group: Int = 1) = {
     expr ^^ { s => f(expr.findFirstMatchIn(s).get.group(group)) }
